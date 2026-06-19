@@ -1,0 +1,48 @@
+name: geo_presence
+description: "GeoPresence - Aplikasi Presensi Berbasis Lokasi GPS"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Database
+  sqflite: ^2.3.3+1
+  sqflite_common_ffi: ^2.3.3
+  path: ^1.9.0
+
+  # Location & Maps
+  geolocator: ^13.0.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Camera & Image
+  image_picker: ^1.1.2
+  camera: ^0.11.0+2
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # Utils
+  intl: ^0.19.0
+  crypto: ^3.0.6
+  shared_preferences: ^2.3.3
+  path_provider: ^2.1.4
+  flutter_animate: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
