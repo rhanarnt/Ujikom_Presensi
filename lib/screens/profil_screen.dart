@@ -58,6 +58,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant ProfilScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Menyinkronkan ulang data form ketika data pengguna berhasil dimuat di Dashboard
+    if (oldWidget.user != widget.user) {
+      _namaCtrl.text = widget.user?.nama ?? '';
+      _emailCtrl.text = widget.user?.email ?? '';
+      setState(() {
+        _fotoPath = widget.user?.foto;
+      });
+    }
+  }
+
   Future<void> _pilihFoto() async {
     try {
       final picker = ImagePicker();

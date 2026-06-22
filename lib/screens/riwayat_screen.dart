@@ -25,6 +25,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     _loadRiwayat();
   }
 
+  @override
+  void didUpdateWidget(covariant RiwayatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Memuat ulang riwayat jika ID User berubah dari inisialisasi awal (dari 0 ke ID asli)
+    if (oldWidget.userId != widget.userId) {
+      _loadRiwayat();
+    }
+  }
+
   Future<void> _loadRiwayat() async {
     setState(() => _isLoading = true);
     try {
