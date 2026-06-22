@@ -26,4 +26,7 @@ class AppConstants {
   static const String prefUserId = 'user_id';
   static const String prefUserNama = 'user_nama';
   static const String prefIsLogin = 'is_login';
+  static const String prefOfficeLat = 'office_lat';
+  static const String prefOfficeLng = 'office_lng';
+  static const String prefOfficeRadius = 'office_radius';
 }

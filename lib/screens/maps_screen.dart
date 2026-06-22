@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 
 class MapsScreen extends StatefulWidget {
@@ -17,15 +18,36 @@ class _MapsScreenState extends State<MapsScreen> {
   bool _isLoading = true;
   double? _jarak;
 
-  static const LatLng _officeLocation = LatLng(
+  LatLng _officeLocation = const LatLng(
     AppConstants.officeLatitude,
     AppConstants.officeLongitude,
   );
+  double _maxDistance = AppConstants.maxDistance;
 
   @override
   void initState() {
     super.initState();
-    _loadMap();
+    _loadOfficeLocation().then((_) {
+      _loadMap();
+    });
+  }
+
+  // Memuat data koordinat kantor dan radius dinamis dari SharedPreferences.
+  Future<void> _loadOfficeLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble(AppConstants.prefOfficeLat);
+    final lng = prefs.getDouble(AppConstants.prefOfficeLng);
+    final rad = prefs.getDouble(AppConstants.prefOfficeRadius);
+    if (lat != null && lng != null) {
+      setState(() {
+        _officeLocation = LatLng(lat, lng);
+      });
+    }
+    if (rad != null) {
+      setState(() {
+        _maxDistance = rad;
+      });
+    }
   }
 
   Future<void> _loadMap() async {
@@ -53,11 +75,12 @@ class _MapsScreenState extends State<MapsScreen> {
         ),
       );
 
+      // Menghitung jarak antara lokasi GPS user dengan koordinat kantor dinamis
       final jarak = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
-        AppConstants.officeLatitude,
-        AppConstants.officeLongitude,
+        _officeLocation.latitude,
+        _officeLocation.longitude,
       );
 
       if (mounted) {
@@ -68,6 +91,64 @@ class _MapsScreenState extends State<MapsScreen> {
       }
     } catch (e) {
       debugPrint('Error getting location: $e');
+    }
+  }
+
+  // Menetapakan koordinat kantor baru berdasarkan GPS saat ini dan menyimpannya secara persisten.
+  Future<void> _setOfficeLocation() async {
+    if (_userPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap tunggu hingga GPS mendeteksi lokasi Anda'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Set Lokasi Kantor'),
+        content: const Text(
+            'Apakah Anda yakin ingin menetapkan lokasi Anda saat ini sebagai koordinat kantor baru?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Set Lokasi'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(AppConstants.prefOfficeLat, _userPosition!.latitude);
+      await prefs.setDouble(AppConstants.prefOfficeLng, _userPosition!.longitude);
+      
+      setState(() {
+        _officeLocation = LatLng(_userPosition!.latitude, _userPosition!.longitude);
+        _jarak = 0.0;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lokasi kantor berhasil diperbarui ke posisi Anda saat ini!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -111,7 +192,7 @@ class _MapsScreenState extends State<MapsScreen> {
                     icon: Icons.business_outlined,
                     label: 'Lokasi Kantor',
                     value:
-                        '${AppConstants.officeLatitude}, ${AppConstants.officeLongitude}',
+                        '${_officeLocation.latitude.toStringAsFixed(6)}, ${_officeLocation.longitude.toStringAsFixed(6)}',
                     color: Colors.blue.shade700,
                   ),
                 ),
@@ -128,7 +209,7 @@ class _MapsScreenState extends State<MapsScreen> {
                     value: _jarak != null
                         ? '${_jarak!.toStringAsFixed(1)} m'
                         : 'Mendeteksi...',
-                    color: _jarak != null && _jarak! <= AppConstants.maxDistance
+                    color: _jarak != null && _jarak! <= _maxDistance
                         ? Colors.green.shade700
                         : Colors.red.shade700,
                   ),
@@ -145,14 +226,14 @@ class _MapsScreenState extends State<MapsScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: _jarak != null && _jarak! <= AppConstants.maxDistance
+                color: _jarak != null && _jarak! <= _maxDistance
                     ? Colors.green.shade50
                     : _jarak != null
                         ? Colors.red.shade50
                         : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _jarak != null && _jarak! <= AppConstants.maxDistance
+                  color: _jarak != null && _jarak! <= _maxDistance
                       ? Colors.green.shade200
                       : _jarak != null
                           ? Colors.red.shade200
@@ -163,11 +244,11 @@ class _MapsScreenState extends State<MapsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    _jarak != null && _jarak! <= AppConstants.maxDistance
+                    _jarak != null && _jarak! <= _maxDistance
                         ? Icons.check_circle_outline
                         : Icons.cancel_outlined,
                     size: 16,
-                    color: _jarak != null && _jarak! <= AppConstants.maxDistance
+                    color: _jarak != null && _jarak! <= _maxDistance
                         ? Colors.green.shade700
                         : _jarak != null
                             ? Colors.red.shade700
@@ -175,7 +256,7 @@ class _MapsScreenState extends State<MapsScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _jarak != null && _jarak! <= AppConstants.maxDistance
+                    _jarak != null && _jarak! <= _maxDistance
                         ? '✓ Anda berada dalam area presensi'
                         : _jarak != null
                             ? '✗ Anda berada di luar area presensi'
@@ -183,7 +264,7 @@ class _MapsScreenState extends State<MapsScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: _jarak != null && _jarak! <= AppConstants.maxDistance
+                      color: _jarak != null && _jarak! <= _maxDistance
                           ? Colors.green.shade700
                           : _jarak != null
                               ? Colors.red.shade700
@@ -225,7 +306,7 @@ class _MapsScreenState extends State<MapsScreen> {
                             circles: [
                               CircleMarker(
                                 point: _officeLocation,
-                                radius: AppConstants.maxDistance,
+                                radius: _maxDistance,
                                 useRadiusInMeter: true,
                                 color: Colors.blue.withOpacity(0.15),
                                 borderColor: Colors.blue.shade600,
@@ -271,6 +352,14 @@ class _MapsScreenState extends State<MapsScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton.small(
+            heroTag: 'set_office',
+            onPressed: _setOfficeLocation,
+            backgroundColor: Colors.orange.shade700,
+            tooltip: 'Set Lokasi Kantor Sekarang',
+            child: const Icon(Icons.add_location_alt_rounded, color: Colors.white),
+          ),
+          const SizedBox(height: 8),
           FloatingActionButton.small(
             heroTag: 'office',
             onPressed: _goToOffice,

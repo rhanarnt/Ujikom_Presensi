@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/database_helper.dart';
 import '../models/presensi_model.dart';
 import '../utils/constants.dart';
@@ -34,6 +35,11 @@ class _PresensiScreenState extends State<PresensiScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
 
+  // Variabel koordinat kantor & radius dinamis
+  double _officeLatitude = AppConstants.officeLatitude;
+  double _officeLongitude = AppConstants.officeLongitude;
+  double _maxDistance = AppConstants.maxDistance;
+
   @override
   void initState() {
     super.initState();
@@ -45,8 +51,29 @@ class _PresensiScreenState extends State<PresensiScreen>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    // Mendeteksi lokasi pengguna secara otomatis begitu halaman presensi dibuka.
-    _detectLocation();
+    // Memuat koordinat kantor dinamis terlebih dahulu, kemudian mendeteksi lokasi
+    _loadOfficeConfig().then((_) {
+      _detectLocation();
+    });
+  }
+
+  // Memuat data koordinat kantor & radius dinamis dari SharedPreferences.
+  Future<void> _loadOfficeConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble(AppConstants.prefOfficeLat);
+    final lng = prefs.getDouble(AppConstants.prefOfficeLng);
+    final rad = prefs.getDouble(AppConstants.prefOfficeRadius);
+    if (lat != null && lng != null) {
+      setState(() {
+        _officeLatitude = lat;
+        _officeLongitude = lng;
+      });
+    }
+    if (rad != null) {
+      setState(() {
+        _maxDistance = rad;
+      });
+    }
   }
 
   @override
@@ -102,8 +129,8 @@ class _PresensiScreenState extends State<PresensiScreen>
       final jarak = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
-        AppConstants.officeLatitude,
-        AppConstants.officeLongitude,
+        _officeLatitude,
+        _officeLongitude,
       );
 
       if (mounted) {
@@ -111,7 +138,7 @@ class _PresensiScreenState extends State<PresensiScreen>
           _currentPosition = position;
           _jarak = jarak;
           // 6. Memvalidasi apakah jarak pengguna lebih kecil atau sama dengan batas maksimal yang diperbolehkan.
-          if (jarak <= AppConstants.maxDistance) {
+          if (jarak <= _maxDistance) {
             _statusLokasi = '✓ Dalam area presensi (${jarak.toStringAsFixed(0)} m)';
           } else {
             _statusLokasi = '✗ Di luar area presensi (${jarak.toStringAsFixed(0)} m)';
@@ -155,7 +182,7 @@ class _PresensiScreenState extends State<PresensiScreen>
     }
 
     // 2. Validasi radius jarak (user wajib berada di dalam area kantor)
-    if (_jarak == null || _jarak! > AppConstants.maxDistance) {
+    if (_jarak == null || _jarak! > _maxDistance) {
       _showSnackBar(
         'Anda berada di luar area presensi (${_jarak?.toStringAsFixed(0)} m dari kantor)',
         isError: true,
@@ -332,7 +359,7 @@ class _PresensiScreenState extends State<PresensiScreen>
   }
 
   bool get _dalamArea =>
-      _jarak != null && _jarak! <= AppConstants.maxDistance;
+      _jarak != null && _jarak! <= _maxDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -530,7 +557,7 @@ class _PresensiScreenState extends State<PresensiScreen>
           ),
           const Divider(height: 20),
           _buildInfoRow('Lokasi Kantor',
-              '${AppConstants.officeLatitude}, ${AppConstants.officeLongitude}'),
+              '${_officeLatitude.toStringAsFixed(6)}, ${_officeLongitude.toStringAsFixed(6)}'),
           const SizedBox(height: 8),
           _buildInfoRow(
             'Lokasi Anda',
@@ -544,7 +571,7 @@ class _PresensiScreenState extends State<PresensiScreen>
             _jarak != null ? '${_jarak!.toStringAsFixed(1)} meter' : '-',
           ),
           const SizedBox(height: 8),
-          _buildInfoRow('Batas Jarak', '${AppConstants.maxDistance.toInt()} meter'),
+          _buildInfoRow('Batas Jarak', '${_maxDistance.toInt()} meter'),
           const Divider(height: 20),
           Container(
             width: double.infinity,
