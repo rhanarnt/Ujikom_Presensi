@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/register_screen.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -57,6 +58,7 @@ class GeoPresenceApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/register': (context) => const RegisterScreen(),
       },
     );
   }
