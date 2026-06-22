@@ -7,18 +7,26 @@ import '../models/presensi_model.dart';
 import '../utils/constants.dart';
 
 class DatabaseHelper {
+  // Singleton instance untuk memastikan hanya ada satu instance DatabaseHelper yang berjalan di aplikasi.
   static final DatabaseHelper _instance = DatabaseHelper._internal();
+  
+  // Factory constructor untuk mengembalikan instance singleton yang sama setiap kali dipanggil.
   factory DatabaseHelper() => _instance;
+  
+  // Named constructor internal untuk inisialisasi awal database helper.
   DatabaseHelper._internal();
 
   static Database? _database;
 
+  // Getter asinkronus untuk mengambil instance database SQLite.
+  // Jika database belum dibuat/dibuka, akan melakukan inisialisasi terlebih dahulu.
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
 
+  // Menginisialisasi koneksi database SQLite dengan mengatur path penyimpanan dan versi database.
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, AppConstants.dbName);
@@ -30,8 +38,10 @@ class DatabaseHelper {
     );
   }
 
+  // Callback yang dijalankan saat database pertama kali dibuat.
+  // Di sini tabel 'User' dan 'Presensi' dibuat menggunakan query DDL (Data Definition Language).
   Future<void> _onCreate(Database db, int version) async {
-    // Tabel User
+    // Membuat Tabel User untuk menyimpan informasi akun pengguna/karyawan.
     await db.execute('''
       CREATE TABLE ${AppConstants.tableUser} (
         id_user INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +52,8 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel Presensi
+    // Membuat Tabel Presensi untuk mencatat data absen harian (masuk & keluar).
+    // Memiliki relasi Foreign Key ke tabel User (id_user).
     await db.execute('''
       CREATE TABLE ${AppConstants.tablePresensi} (
         id_presensi INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +70,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Insert user demo
+    // Memasukkan (insert) user demo bawaan untuk login pertama kali saat aplikasi diuji.
     final passwordHash = _hashPassword('admin123');
     await db.insert(AppConstants.tableUser, {
       'nama': 'Ahmad Roihan',
@@ -69,14 +80,18 @@ class DatabaseHelper {
     });
   }
 
+  // Melakukan hashing password menggunakan algoritma SHA-256 demi keamanan data.
+  // Password tidak disimpan dalam bentuk teks biasa (plain text) di database.
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
-  // ===================== USER OPERATIONS =====================
+  // ===================== USER OPERATIONS (OPERASI USER) =====================
 
+  // Melakukan validasi login pengguna dengan mencocokkan email dan password yang telah di-hash.
+  // Mengembalikan objek UserModel jika login berhasil, atau null jika gagal.
   Future<UserModel?> login(String email, String password) async {
     final db = await database;
     final hashedPassword = _hashPassword(password);
@@ -91,6 +106,8 @@ class DatabaseHelper {
     return null;
   }
 
+  // Mendaftarkan (registrasi) pengguna baru ke database SQLite.
+  // Password pengguna akan di-hash terlebih dahulu sebelum disimpan ke tabel User.
   Future<int> registerUser(UserModel user) async {
     final db = await database;
     final userMap = user.toMap();
@@ -99,6 +116,8 @@ class DatabaseHelper {
     return await db.insert(AppConstants.tableUser, userMap);
   }
 
+  // Mengambil informasi data pengguna berdasarkan ID User.
+  // Berguna untuk memperbarui session atau menampilkan profil pengguna.
   Future<UserModel?> getUserById(int id) async {
     final db = await database;
     final result = await db.query(
@@ -110,6 +129,7 @@ class DatabaseHelper {
     return null;
   }
 
+  // Memperbarui data profil pengguna (Nama, Email, dan Foto Profil) di database SQLite.
   Future<int> updateUser(UserModel user) async {
     final db = await database;
     final userMap = {
@@ -125,6 +145,7 @@ class DatabaseHelper {
     );
   }
 
+  // Memperbarui password pengguna dengan password baru yang di-hash menggunakan SHA-256.
   Future<int> updatePassword(int userId, String newPassword) async {
     final db = await database;
     return await db.update(
@@ -135,8 +156,10 @@ class DatabaseHelper {
     );
   }
 
-  // ===================== PRESENSI OPERATIONS =====================
+  // ===================== PRESENSI OPERATIONS (OPERASI ABSENSI) =====================
 
+  // Mengambil data presensi pengguna pada tanggal tertentu (biasanya hari ini).
+  // Digunakan untuk mengecek apakah user sudah melakukan absen masuk atau absen keluar hari ini.
   Future<PresensiModel?> getPresensiHariIni(int userId, String tanggal) async {
     final db = await database;
     final result = await db.query(
@@ -148,6 +171,8 @@ class DatabaseHelper {
     return null;
   }
 
+  // Memasukkan data absen masuk pengguna baru ke tabel Presensi.
+  // Menyimpan data waktu masuk, tanggal, lokasi GPS, foto selfie masuk, dan status (tepat waktu/terlambat).
   Future<int> insertPresensiMasuk(PresensiModel presensi) async {
     final db = await database;
     final map = presensi.toMap();
@@ -155,6 +180,7 @@ class DatabaseHelper {
     return await db.insert(AppConstants.tablePresensi, map);
   }
 
+  // Memperbarui data presensi dengan menambahkan jam keluar dan foto selfie keluar saat pengguna melakukan absen pulang.
   Future<int> updatePresensiKeluar(
     int idPresensi,
     String jamKeluar,
@@ -169,6 +195,8 @@ class DatabaseHelper {
     );
   }
 
+  // Mengambil seluruh riwayat presensi milik pengguna tertentu.
+  // Data diurutkan berdasarkan tanggal terbaru dan jam masuk terbaru.
   Future<List<PresensiModel>> getRiwayatPresensi(int userId) async {
     final db = await database;
     final result = await db.query(
@@ -180,6 +208,8 @@ class DatabaseHelper {
     return result.map((e) => PresensiModel.fromMap(e)).toList();
   }
 
+  // Menghitung statistik presensi pengguna untuk ditampilkan di dashboard.
+  // Menghasilkan total hadir, jumlah terlambat, dan jumlah tepat waktu.
   Future<Map<String, int>> getStatistikPresensi(int userId) async {
     final db = await database;
     final all = await db.query(
@@ -199,6 +229,7 @@ class DatabaseHelper {
     };
   }
 
+  // Menutup koneksi database SQLite saat tidak digunakan lagi untuk menghindari kebocoran memori (memory leak).
   Future<void> closeDatabase() async {
     if (_database != null) {
       await _database!.close();

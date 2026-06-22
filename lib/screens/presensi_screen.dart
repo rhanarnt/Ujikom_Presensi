@@ -37,6 +37,7 @@ class _PresensiScreenState extends State<PresensiScreen>
   @override
   void initState() {
     super.initState();
+    // Menginisialisasi AnimationController untuk memberikan efek denyut (pulse) pada radar GPS.
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -44,15 +45,20 @@ class _PresensiScreenState extends State<PresensiScreen>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    // Mendeteksi lokasi pengguna secara otomatis begitu halaman presensi dibuka.
     _detectLocation();
   }
 
   @override
   void dispose() {
+    // Membebaskan memori dengan menghancurkan controller animasi ketika halaman ditutup.
     _pulseController.dispose();
     super.dispose();
   }
 
+  // Mendeteksi koordinat GPS terkini menggunakan paket Geolocator.
+  // Memvalidasi apakah layanan GPS aktif dan meminta izin akses lokasi jika belum diberikan.
+  // Menghitung jarak antara pengguna dan lokasi kantor, lalu memverifikasi apakah dalam batas wilayah presensi.
   Future<void> _detectLocation() async {
     setState(() {
       _isGettingLocation = true;
@@ -60,15 +66,17 @@ class _PresensiScreenState extends State<PresensiScreen>
     });
 
     try {
-      // Cek permission
+      // 1. Memeriksa apakah layanan GPS perangkat aktif.
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() => _statusLokasi = 'GPS tidak aktif, harap aktifkan GPS');
         return;
       }
 
+      // 2. Memeriksa status izin lokasi aplikasi.
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
+        // Meminta izin lokasi jika belum disetujui.
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           setState(() => _statusLokasi = 'Izin lokasi ditolak');
@@ -76,12 +84,13 @@ class _PresensiScreenState extends State<PresensiScreen>
         }
       }
 
+      // 3. Menangani kasus jika izin lokasi ditolak secara permanen di pengaturan sistem.
       if (permission == LocationPermission.deniedForever) {
         setState(() => _statusLokasi = 'Izin lokasi ditolak permanen');
         return;
       }
 
-      // Dapatkan posisi
+      // 4. Mengambil koordinat GPS terkini (Latitude, Longitude) dengan akurasi tinggi.
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -89,7 +98,7 @@ class _PresensiScreenState extends State<PresensiScreen>
         ),
       );
 
-      // Hitung jarak ke kantor
+      // 5. Menghitung jarak (dalam meter) antara lokasi pengguna dengan lokasi kantor.
       final jarak = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
@@ -101,6 +110,7 @@ class _PresensiScreenState extends State<PresensiScreen>
         setState(() {
           _currentPosition = position;
           _jarak = jarak;
+          // 6. Memvalidasi apakah jarak pengguna lebih kecil atau sama dengan batas maksimal yang diperbolehkan.
           if (jarak <= AppConstants.maxDistance) {
             _statusLokasi = '✓ Dalam area presensi (${jarak.toStringAsFixed(0)} m)';
           } else {
@@ -117,13 +127,15 @@ class _PresensiScreenState extends State<PresensiScreen>
     }
   }
 
+  // Mengambil foto selfie menggunakan kamera perangkat melalui paket ImagePicker.
+  // Membuka kamera depan secara default dan membatasi kualitas gambar agar ukuran file tidak terlalu besar.
   Future<void> _ambilFoto() async {
     try {
       final picker = ImagePicker();
       final XFile? foto = await picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 70,
-        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 70, // Menurunkan kualitas ke 70% untuk menghemat penyimpanan database
+        preferredCameraDevice: CameraDevice.front, // Mengutamakan kamera depan untuk selfie
       );
       if (foto != null) {
         setState(() => _fotoPath = foto.path);
@@ -133,12 +145,16 @@ class _PresensiScreenState extends State<PresensiScreen>
     }
   }
 
+  // Menyimpan data transaksi presensi (Masuk atau Keluar) ke database SQLite.
+  // Melakukan validasi koordinat GPS dan membatasi agar user wajib berada di area kantor saat presensi.
   Future<void> _simpanPresensi() async {
+    // 1. Validasi keberadaan GPS
     if (_currentPosition == null) {
       _showSnackBar('Harap deteksi lokasi terlebih dahulu', isError: true);
       return;
     }
 
+    // 2. Validasi radius jarak (user wajib berada di dalam area kantor)
     if (_jarak == null || _jarak! > AppConstants.maxDistance) {
       _showSnackBar(
         'Anda berada di luar area presensi (${_jarak?.toStringAsFixed(0)} m dari kantor)',
@@ -155,8 +171,9 @@ class _PresensiScreenState extends State<PresensiScreen>
       final tanggal = DateFormat('dd-MM-yyyy').format(now);
       final jam = DateFormat('HH:mm').format(now);
 
+      // A. OPERASI PRESENSI MASUK
       if (widget.jenisPresentasi == 'masuk') {
-        // Tentukan status (Tepat Waktu / Terlambat)
+        // Menentukan status kehadiran (Tepat Waktu atau Terlambat) berdasarkan jam batas masuk kantor.
         String status;
         if (now.hour < AppConstants.jamMasukBatas ||
             (now.hour == AppConstants.jamMasukBatas &&
@@ -176,6 +193,7 @@ class _PresensiScreenState extends State<PresensiScreen>
           fotoMasuk: _fotoPath,
         );
 
+        // Menyimpan data absen masuk baru ke database
         await db.insertPresensiMasuk(presensi);
 
         if (mounted) {
@@ -185,8 +203,10 @@ class _PresensiScreenState extends State<PresensiScreen>
             status: status,
           );
         }
-      } else {
-        // Presensi Keluar
+      } 
+      // B. OPERASI PRESENSI KELUAR
+      else {
+        // Memperbarui record absensi hari ini dengan menambahkan jam keluar dan foto selfie pulang
         await db.updatePresensiKeluar(
           widget.presensiHariIni!.idPresensi!,
           jam,
@@ -208,6 +228,8 @@ class _PresensiScreenState extends State<PresensiScreen>
     }
   }
 
+  // Menampilkan dialog informasi bahwa presensi masuk/keluar berhasil dilakukan.
+  // Menyajikan ringkasan jam absensi, status kehadiran, dan koordinat GPS.
   void _showSuccessDialog({
     required String title,
     required String jam,

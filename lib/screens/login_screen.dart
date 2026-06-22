@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    // Menginisialisasi AnimationController untuk transisi fade dan slide (geser) saat halaman login dimuat.
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -35,37 +36,46 @@ class _LoginScreenState extends State<LoginScreen>
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
+    _animController.forward(); // Memulai animasi
   }
 
   @override
   void dispose() {
+    // Membebaskan memori dengan menghancurkan animation controller dan text controllers.
     _animController.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
+  // Menangani proses otentikasi login pengguna.
+  // Memvalidasi kesesuaian input form, memanggil database helper untuk mengecek user,
+  // dan menyimpan sesi login ke SharedPreferences jika data valid.
   Future<void> _login() async {
+    // 1. Memeriksa validasi form (apakah email/password kosong atau format email salah)
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
       final db = DatabaseHelper();
+      // 2. Memanggil fungsi login dari DatabaseHelper untuk mencari kecocokan user di SQLite
       final user = await db.login(_emailCtrl.text.trim(), _passwordCtrl.text);
 
       if (!mounted) return;
 
       if (user != null) {
+        // 3. Menyimpan data sesi login pengguna secara persisten menggunakan SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(AppConstants.prefIsLogin, true);
         await prefs.setInt(AppConstants.prefUserId, user.idUser!);
         await prefs.setString(AppConstants.prefUserNama, user.nama);
 
         if (!mounted) return;
+        // 4. Mengarahkan pengguna masuk ke halaman Dashboard dan menghapus riwayat navigasi sebelumnya
         Navigator.pushReplacementNamed(context, '/dashboard');
       } else {
+        // Menampilkan error jika data user tidak ditemukan atau salah password
         _showError('Email atau password salah!');
       }
     } catch (e) {

@@ -31,10 +31,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Memuat data profil user, status presensi hari ini, statistik kehadiran,
+    // serta mengaktifkan timer jam dinamis saat halaman pertama kali dibuka.
     _loadData();
     _startClock();
   }
 
+  // Mengaktifkan timer periodik yang berjalan setiap 1 detik
+  // untuk menampilkan perubahan jam secara real-time di UI Dashboard.
   void _startClock() {
     _updateClock();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -42,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Memperbarui nilai jam dan tanggal saat ini dengan format lokal Indonesia.
   void _updateClock() {
     final now = DateTime.now();
     setState(() {
@@ -50,20 +55,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Mengambil sesi user dari SharedPreferences dan memuat data pendukung dari database SQLite.
+  // Termasuk profil pengguna, status kehadiran hari ini, dan ringkasan statistik.
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt(AppConstants.prefUserId);
+      
+      // Jika session user kosong (belum login), kembalikan ke halaman login
       if (userId == null) {
         Navigator.pushReplacementNamed(context, '/login');
         return;
       }
 
       final db = DatabaseHelper();
+      // Mengambil data user berdasarkan ID
       final user = await db.getUserById(userId);
+      
+      // Mengambil data absen user hari ini berdasarkan tanggal
       final tanggal = DateFormat('dd-MM-yyyy').format(DateTime.now());
       final presensi = await db.getPresensiHariIni(userId, tanggal);
+      
+      // Mengambil rangkuman statistik kehadiran user
       final statistik = await db.getStatistikPresensi(userId);
 
       if (mounted) {
@@ -79,6 +93,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Menangani proses keluar (logout) dari aplikasi.
+  // Meminta konfirmasi pengguna, lalu menghapus semua sesi SharedPreferences dan kembali ke login.
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -105,9 +121,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (confirm == true) {
       final prefs = await SharedPreferences.getInstance();
+      // Menghapus data sesi user secara permanen
       await prefs.clear();
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
     }
+  }
+
+  @override
+  void dispose() {
+    // Membatalkan (cancel) timer jam agar tidak terjadi kebocoran memori saat widget dihancurkan.
+    _clockTimer?.cancel();
+    super.dispose();
   }
 
   Widget _buildHomeTab() {
