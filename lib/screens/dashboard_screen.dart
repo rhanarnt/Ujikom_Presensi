@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -254,7 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             radius: 28,
             backgroundColor: Colors.white.withOpacity(0.2),
             backgroundImage: _user?.foto != null
-                ? NetworkImage(_user!.foto!)
+                ? FileImage(File(_user!.foto!))
                 : null,
             child: _user?.foto == null
                 ? Text(
