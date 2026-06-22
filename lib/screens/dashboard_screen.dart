@@ -712,11 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _clockTimer?.cancel();
-    super.dispose();
-  }
+
 
   @override
   Widget build(BuildContext context) {
