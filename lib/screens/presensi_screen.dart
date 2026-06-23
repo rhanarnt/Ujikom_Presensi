@@ -8,6 +8,8 @@ import '../helpers/database_helper.dart';
 import '../models/presensi_model.dart';
 import '../utils/constants.dart';
 
+/// Widget Halaman Presensi untuk memproses absensi masuk dan keluar.
+/// Melakukan pencocokan radius koordinat GPS secara dinamis dan pengambilan foto selfie.
 class PresensiScreen extends StatefulWidget {
   final int userId;
   final String jenisPresentasi; // 'masuk' atau 'keluar'
@@ -24,6 +26,7 @@ class PresensiScreen extends StatefulWidget {
   State<PresensiScreen> createState() => _PresensiScreenState();
 }
 
+/// State untuk mengelola deteksi lokasi GPS, interaksi kamera untuk selfie, dan penyimpanan data absen ke SQLite.
 class _PresensiScreenState extends State<PresensiScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
@@ -257,6 +260,8 @@ class _PresensiScreenState extends State<PresensiScreen>
 
   // Menampilkan dialog informasi bahwa presensi masuk/keluar berhasil dilakukan.
   // Menyajikan ringkasan jam absensi, status kehadiran, dan koordinat GPS.
+  /// Menampilkan dialog popup ketika proses absensi berhasil dilakukan.
+  /// Menunjukkan rincian jam kehadiran, status (tepat waktu/terlambat), dan koordinat GPS.
   void _showSuccessDialog({
     required String title,
     required String jam,
@@ -328,6 +333,7 @@ class _PresensiScreenState extends State<PresensiScreen>
     );
   }
 
+  /// Membuat komponen baris informasi detail presensi dalam bentuk berpasangan (key-value).
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -347,6 +353,7 @@ class _PresensiScreenState extends State<PresensiScreen>
     );
   }
 
+  /// Menampilkan pemberitahuan singkat (SnackBar) mengambang di bagian bawah layar.
   void _showSnackBar(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -358,9 +365,12 @@ class _PresensiScreenState extends State<PresensiScreen>
     );
   }
 
+  /// Getter untuk memverifikasi apakah posisi pengguna saat ini berada dalam radius area presensi yang valid.
   bool get _dalamArea =>
       _jarak != null && _jarak! <= _maxDistance;
 
+  /// Mengatur pembangunan UI utama layar presensi, termasuk animasi status radar GPS,
+  /// kartu informasi lokasi, tombol ambil foto selfie, dan tombol kirim presensi.
   @override
   Widget build(BuildContext context) {
     final isMasuk = widget.jenisPresentasi == 'masuk';
@@ -529,6 +539,8 @@ class _PresensiScreenState extends State<PresensiScreen>
     );
   }
 
+  /// Membuat komponen kartu informasi lokasi yang merangkum posisi kantor, posisi pengguna,
+  /// jarak saat ini, batas toleransi, dan pesan status area.
   Widget _buildInfoCard() {
     return Container(
       width: double.infinity,
@@ -610,6 +622,8 @@ class _PresensiScreenState extends State<PresensiScreen>
     );
   }
 
+  /// Membuat komponen kolom foto selfie, menampilkan hasil potret gambar
+  /// atau petunjuk area ketuk jika foto belum diambil.
   Widget _buildFotoSection() {
     return Container(
       width: double.infinity,

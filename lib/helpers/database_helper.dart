@@ -23,7 +23,32 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
+    await _insertDemoUserIfMissing(_database!);
     return _database!;
+  }
+
+  // Memastikan user demo roihan@smk.sch.id selalu tersedia di database untuk keperluan uji coba Ujikom.
+  Future<void> _insertDemoUserIfMissing(Database db) async {
+    try {
+      final result = await db.query(
+        AppConstants.tableUser,
+        where: 'email = ?',
+        whereArgs: ['roihan@smk.sch.id'],
+      );
+      if (result.isEmpty) {
+        final passwordHash = _hashPassword('admin123');
+        await db.insert(AppConstants.tableUser, {
+          'nama': 'Ahmad Roihan',
+          'email': 'roihan@smk.sch.id',
+          'password': passwordHash,
+          'foto': null,
+          'nisn': '0068765432',
+          'kelas': 'XII RPL 1',
+        });
+      }
+    } catch (e) {
+      // Abaikan jika terjadi error (misalnya jika migrasi kolom belum selesai)
+    }
   }
 
   // Menginisialisasi koneksi database SQLite dengan mengatur path penyimpanan dan versi database.
@@ -35,7 +60,21 @@ class DatabaseHelper {
       path,
       version: AppConstants.dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  // Callback yang dijalankan saat database ditingkatkan versinya.
+  // Menyisipkan kolom 'nisn' dan 'kelas' jika pengguna meng-upgrade aplikasi dari versi lama.
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute("ALTER TABLE ${AppConstants.tableUser} ADD COLUMN nisn TEXT");
+        await db.execute("ALTER TABLE ${AppConstants.tableUser} ADD COLUMN kelas TEXT");
+      } catch (e) {
+        // Kolom mungkin sudah ditambahkan sebelumnya, abaikan agar tidak crash.
+      }
+    }
   }
 
   // Callback yang dijalankan saat database pertama kali dibuat.
@@ -48,7 +87,9 @@ class DatabaseHelper {
         nama TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        foto TEXT
+        foto TEXT,
+        nisn TEXT,
+        kelas TEXT
       )
     ''');
 
@@ -74,9 +115,11 @@ class DatabaseHelper {
     final passwordHash = _hashPassword('admin123');
     await db.insert(AppConstants.tableUser, {
       'nama': 'Ahmad Roihan',
-      'email': 'admin@geopresence.com',
+      'email': 'roihan@smk.sch.id',
       'password': passwordHash,
       'foto': null,
+      'nisn': '0068765432',
+      'kelas': 'XII RPL 1',
     });
   }
 
@@ -129,13 +172,22 @@ class DatabaseHelper {
     return null;
   }
 
-  // Memperbarui data profil pengguna (Nama, Email, dan Foto Profil) di database SQLite.
+  // Mengambil seluruh data siswa (user) yang terdaftar di database SQLite.
+  Future<List<UserModel>> getAllSiswa() async {
+    final db = await database;
+    final result = await db.query(AppConstants.tableUser);
+    return result.map((e) => UserModel.fromMap(e)).toList();
+  }
+
+  // Memperbarui data profil pengguna (Nama, Email, Foto, NISN, dan Kelas) di database SQLite.
   Future<int> updateUser(UserModel user) async {
     final db = await database;
     final userMap = {
       'nama': user.nama,
       'email': user.email,
       'foto': user.foto,
+      'nisn': user.nisn,
+      'kelas': user.kelas,
     };
     return await db.update(
       AppConstants.tableUser,
@@ -154,6 +206,23 @@ class DatabaseHelper {
       where: 'id_user = ?',
       whereArgs: [userId],
     );
+  }
+
+  // Menghapus data akun pengguna beserta seluruh riwayat presensinya dari database SQLite secara transaksional.
+  Future<void> deleteUser(int userId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        AppConstants.tablePresensi,
+        where: 'id_user = ?',
+        whereArgs: [userId],
+      );
+      await txn.delete(
+        AppConstants.tableUser,
+        where: 'id_user = ?',
+        whereArgs: [userId],
+      );
+    });
   }
 
   // ===================== PRESENSI OPERATIONS (OPERASI ABSENSI) =====================

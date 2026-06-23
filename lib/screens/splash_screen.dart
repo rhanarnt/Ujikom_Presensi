@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 
+/// Widget Halaman Splash Screen yang ditampilkan pertama kali saat aplikasi dibuka.
+/// Mengatur animasi logo pembuka dan pengecekan status login pengguna.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -9,6 +11,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
+/// State untuk mengelola animasi transisi splash dan pembacaan status sesi pengguna dari SharedPreferences.
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
@@ -38,6 +41,8 @@ class _SplashScreenState extends State<SplashScreen>
     _checkLoginStatus();
   }
 
+  /// Memeriksa status login pengguna dari penyimpanan lokal SharedPreferences setelah delay 3 detik.
+  /// Jika pengguna sudah login, diarahkan ke Halaman Dashboard. Jika belum, diarahkan ke Halaman Login.
   Future<void> _checkLoginStatus() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
@@ -59,6 +64,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  /// Mengatur pembangunan UI utama layar Splash Screen, memadukan efek animasi transisi dan logo GeoPresence.
   @override
   Widget build(BuildContext context) {
     return Scaffold(

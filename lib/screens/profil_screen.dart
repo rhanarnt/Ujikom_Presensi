@@ -8,6 +8,8 @@ import '../helpers/database_helper.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 
+/// Widget Halaman Profil untuk menampilkan data pengguna,
+/// merubah biodata diri, mengunggah foto profil baru, dan merubah kata sandi.
 class ProfilScreen extends StatefulWidget {
   final UserModel? user;
   final VoidCallback onProfileUpdated;
@@ -22,12 +24,15 @@ class ProfilScreen extends StatefulWidget {
   State<ProfilScreen> createState() => _ProfilScreenState();
 }
 
+/// State untuk mengelola input formulir edit profil, interaksi galeri foto, dan pembaruan password.
 class _ProfilScreenState extends State<ProfilScreen> {
   final _formKey = GlobalKey<FormState>();
   final _formPasswordKey = GlobalKey<FormState>();
 
   late TextEditingController _namaCtrl;
   late TextEditingController _emailCtrl;
+  late TextEditingController _nisnCtrl;
+  late TextEditingController _kelasCtrl;
 
   final _oldPasswordCtrl = TextEditingController();
   final _newPasswordCtrl = TextEditingController();
@@ -45,6 +50,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
     super.initState();
     _namaCtrl = TextEditingController(text: widget.user?.nama ?? '');
     _emailCtrl = TextEditingController(text: widget.user?.email ?? '');
+    _nisnCtrl = TextEditingController(text: widget.user?.nisn ?? '');
+    _kelasCtrl = TextEditingController(text: widget.user?.kelas ?? '');
     _fotoPath = widget.user?.foto;
   }
 
@@ -52,6 +59,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
   void dispose() {
     _namaCtrl.dispose();
     _emailCtrl.dispose();
+    _nisnCtrl.dispose();
+    _kelasCtrl.dispose();
     _oldPasswordCtrl.dispose();
     _newPasswordCtrl.dispose();
     _confirmNewPasswordCtrl.dispose();
@@ -65,12 +74,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
     if (oldWidget.user != widget.user) {
       _namaCtrl.text = widget.user?.nama ?? '';
       _emailCtrl.text = widget.user?.email ?? '';
+      _nisnCtrl.text = widget.user?.nisn ?? '';
+      _kelasCtrl.text = widget.user?.kelas ?? '';
       setState(() {
         _fotoPath = widget.user?.foto;
       });
     }
   }
 
+  /// Membuka galeri foto perangkat untuk memilih gambar baru sebagai foto profil.
   Future<void> _pilihFoto() async {
     try {
       final picker = ImagePicker();
@@ -86,6 +98,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     }
   }
 
+  /// Memvalidasi data form dan menyimpan perubahan biodata pengguna (Nama, Email, Foto) ke database SQLite.
   Future<void> _simpanProfil() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.user == null) return;
@@ -97,6 +110,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
         nama: _namaCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         foto: _fotoPath,
+        nisn: _nisnCtrl.text.trim(),
+        kelas: _kelasCtrl.text.trim(),
       );
 
       await db.updateUser(updatedUser);
@@ -114,6 +129,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     }
   }
 
+  /// Menampilkan pesan pemberitahuan di bagian bawah layar menggunakan SnackBar.
   void _showSnackBar(String msg, bool isError) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -164,6 +180,79 @@ class _ProfilScreenState extends State<ProfilScreen> {
     }
   }
 
+  /// Menampilkan dialog konfirmasi untuk memastikan pengguna benar-benar ingin menghapus akun.
+  Future<void> _konfirmasiHapusAkun() async {
+    if (widget.user == null) return;
+
+    final konfirmasi = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
+              const SizedBox(width: 8),
+              const Text('Hapus Akun?'),
+            ],
+          ),
+          content: const Text(
+            'Apakah Anda yakin ingin menghapus akun ini secara permanen? '
+            'Semua riwayat presensi Anda juga akan terhapus dan tindakan ini tidak dapat dibatalkan.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Batal',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Ya, Hapus'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (konfirmasi == true) {
+      await _hapusAkun();
+    }
+  }
+
+  /// Menangani proses penghapusan akun dari SQLite dan membersihkan sesi lokal.
+  Future<void> _hapusAkun() async {
+    setState(() => _isLoading = true);
+    try {
+      final db = DatabaseHelper();
+      
+      // 1. Hapus user & data presensinya dari database
+      await db.deleteUser(widget.user!.idUser!);
+
+      // 2. Bersihkan sesi SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      if (mounted) {
+        _showSnackBar('Akun Anda berhasil dihapus secara permanen', false);
+        // 3. Arahkan pengguna kembali ke halaman Login dan hapus seluruh stack navigasi
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('Gagal menghapus akun: ${e.toString()}', true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Mengatur pembangunan UI utama layar Profil, termasuk form biodata, form ubah password, dan tombol simpan.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,6 +364,26 @@ class _ProfilScreenState extends State<ProfilScreen> {
                           controller: _namaCtrl,
                           decoration: _inputDeco(Icons.person_outline, 'Masukkan nama'),
                           validator: (v) => v!.isEmpty ? 'Nama tidak boleh kosong' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Input NISN
+                        _buildLabel('NISN'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _nisnCtrl,
+                          decoration: _inputDeco(Icons.badge_outlined, 'Masukkan NISN'),
+                          validator: (v) => v!.isEmpty ? 'NISN tidak boleh kosong' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Input Kelas
+                        _buildLabel('Kelas'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _kelasCtrl,
+                          decoration: _inputDeco(Icons.class_outlined, 'Masukkan kelas'),
+                          validator: (v) => v!.isEmpty ? 'Kelas tidak boleh kosong' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -459,12 +568,79 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // FORM 3: Zona Bahaya (Hapus Akun)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.red.shade100, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Zona Bahaya',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Setelah Anda menghapus akun, semua data profil serta seluruh riwayat kehadiran Anda akan dihapus secara permanen dari perangkat ini.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _konfirmasiHapusAkun,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hapus Akun Permanen',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  /// Membuat widget label teks berwarna untuk setiap form input di halaman profil.
   Widget _buildLabel(String text) {
     return Text(
       text,
@@ -476,6 +652,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
+  /// Membuat dekorasi input form (InputDecoration) dengan warna, garis tepi, ikon, dan teks petunjuk (hint).
   InputDecoration _inputDeco(IconData icon, String hint, {Widget? suffix}) {
     return InputDecoration(
       hintText: hint,

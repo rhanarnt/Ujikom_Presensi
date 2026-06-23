@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
 import '../models/user_model.dart';
 
+/// Widget Halaman Registrasi (Pendaftaran) untuk membuat akun karyawan baru.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -9,6 +10,7 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+/// State untuk mengelola input formulir registrasi dan melakukan validasi pendaftaran akun baru.
 class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
@@ -16,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
+  final _nisnCtrl = TextEditingController();
+  final _kelasCtrl = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -49,6 +53,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
+    _nisnCtrl.dispose();
+    _kelasCtrl.dispose();
     super.dispose();
   }
 
@@ -68,6 +74,8 @@ class _RegisterScreenState extends State<RegisterScreen>
         nama: _namaCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
+        nisn: _nisnCtrl.text.trim(),
+        kelas: _kelasCtrl.text.trim(),
       );
 
       // 3. Menyimpan data pengguna baru ke database SQLite
@@ -124,10 +132,9 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
+  /// Mengatur pembangunan UI utama layar registrasi akun baru, termasuk logo, formulir pendaftaran, dan tombol submit.
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -138,282 +145,332 @@ class _RegisterScreenState extends State<RegisterScreen>
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: SizedBox(
-              height: size.height - MediaQuery.of(context).padding.top,
-              child: Column(
-                children: [
-                  // Header Halaman
-                  Expanded(
-                    flex: 2,
-                    child: FadeTransition(
-                      opacity: _fadeAnim,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.4),
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.person_add_alt_1,
-                              size: 40,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Pendaftaran Akun',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Buat akun karyawan baru Anda',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-
-                  // Form Input Card
-                  Expanded(
-                    flex: 5,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Container(
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(36),
-                              topRight: Radius.circular(36),
-                            ),
-                          ),
-                          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-                          child: Form(
-                            key: _formKey,
-                            child: ListView(
-                              physics: const ClampingScrollPhysics(),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // Header Halaman
+                        FadeTransition(
+                          opacity: _fadeAnim,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.4),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_add_alt_1,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
                                 const Text(
-                                  'Daftar Baru',
+                                  'Pendaftaran Siswa',
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 28,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1565C0),
+                                    color: Colors.white,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Isi data di bawah ini dengan lengkap',
+                                  'Buat akun presensi siswa SMK',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Colors.grey.shade600,
+                                    color: Colors.white.withOpacity(0.8),
                                   ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Input Nama Lengkap
-                                _buildInputLabel('Nama Lengkap'),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _namaCtrl,
-                                  keyboardType: TextInputType.name,
-                                  decoration: _inputDecoration(
-                                    hint: 'Nama Lengkap Anda',
-                                    icon: Icons.person_outline,
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Nama tidak boleh kosong';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Input Email
-                                _buildInputLabel('Email'),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _emailCtrl,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: _inputDecoration(
-                                    hint: 'contoh@email.com',
-                                    icon: Icons.email_outlined,
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Email tidak boleh kosong';
-                                    }
-                                    if (!val.contains('@')) {
-                                      return 'Format email tidak valid';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Input Password
-                                _buildInputLabel('Password'),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _passwordCtrl,
-                                  obscureText: _obscurePassword,
-                                  decoration: _inputDecoration(
-                                    hint: 'Minimal 6 karakter',
-                                    icon: Icons.lock_outline,
-                                    suffix: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        color: Colors.grey.shade500,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => setState(
-                                          () => _obscurePassword = !_obscurePassword),
-                                    ),
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Password tidak boleh kosong';
-                                    }
-                                    if (val.length < 6) {
-                                      return 'Password minimal 6 karakter';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Input Konfirmasi Password
-                                _buildInputLabel('Konfirmasi Password'),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _confirmPasswordCtrl,
-                                  obscureText: _obscureConfirmPassword,
-                                  decoration: _inputDecoration(
-                                    hint: 'Ulangi password Anda',
-                                    icon: Icons.lock_clock_outlined,
-                                    suffix: IconButton(
-                                      icon: Icon(
-                                        _obscureConfirmPassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        color: Colors.grey.shade500,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => setState(
-                                          () => _obscureConfirmPassword = !_obscureConfirmPassword),
-                                    ),
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Konfirmasi password wajib diisi';
-                                    }
-                                    if (val != _passwordCtrl.text) {
-                                      return 'Konfirmasi password tidak cocok';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 28),
-
-                                // Tombol Daftar
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 52,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : _register,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1565C0),
-                                      foregroundColor: Colors.white,
-                                      elevation: 3,
-                                      shadowColor:
-                                          const Color(0xFF1565C0).withOpacity(0.3),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text(
-                                            'Daftar Sekarang',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Tombol Kembali ke Login
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Sudah punya akun? ',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => Navigator.pop(context),
-                                      child: const Text(
-                                        'Login di sini',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF1565C0),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ],
                             ),
                           ),
                         ),
-                      ),
+
+                        // Form Input Card
+                        Expanded(
+                          child: SlideTransition(
+                            position: _slideAnim,
+                            child: FadeTransition(
+                              opacity: _fadeAnim,
+                              child: Container(
+                                width: double.infinity,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(36),
+                                    topRight: Radius.circular(36),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Daftar Baru',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF1565C0),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Isi data di bawah ini dengan lengkap',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+
+                                      // Input Nama Lengkap
+                                      _buildInputLabel('Nama Lengkap'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _namaCtrl,
+                                        keyboardType: TextInputType.name,
+                                        decoration: _inputDecoration(
+                                          hint: 'Nama Lengkap Anda',
+                                          icon: Icons.person_outline,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Nama tidak boleh kosong';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Input NISN
+                                      _buildInputLabel('NISN (Nomor Induk Siswa Nasional)'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _nisnCtrl,
+                                        keyboardType: TextInputType.number,
+                                        decoration: _inputDecoration(
+                                          hint: 'Contoh: 0068765432',
+                                          icon: Icons.badge_outlined,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'NISN tidak boleh kosong';
+                                          }
+                                          if (val.length != 10 || int.tryParse(val) == null) {
+                                            return 'NISN harus berupa 10 digit angka';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Input Kelas
+                                      _buildInputLabel('Kelas'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _kelasCtrl,
+                                        keyboardType: TextInputType.text,
+                                        decoration: _inputDecoration(
+                                          hint: 'Contoh: XII RPL 1',
+                                          icon: Icons.class_outlined,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Kelas tidak boleh kosong';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Input Email
+                                      _buildInputLabel('Email'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _emailCtrl,
+                                        keyboardType: TextInputType.emailAddress,
+                                        decoration: _inputDecoration(
+                                          hint: 'contoh@email.com',
+                                          icon: Icons.email_outlined,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Email tidak boleh kosong';
+                                          }
+                                          if (!val.contains('@')) {
+                                            return 'Format email tidak valid';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Input Password
+                                      _buildInputLabel('Password'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _passwordCtrl,
+                                        obscureText: _obscurePassword,
+                                        decoration: _inputDecoration(
+                                          hint: 'Minimal 6 karakter',
+                                          icon: Icons.lock_outline,
+                                          suffix: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                              color: Colors.grey.shade500,
+                                              size: 20,
+                                            ),
+                                            onPressed: () => setState(
+                                                () => _obscurePassword = !_obscurePassword),
+                                          ),
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Password tidak boleh kosong';
+                                          }
+                                          if (val.length < 6) {
+                                            return 'Password minimal 6 karakter';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Input Konfirmasi Password
+                                      _buildInputLabel('Konfirmasi Password'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _confirmPasswordCtrl,
+                                        obscureText: _obscureConfirmPassword,
+                                        decoration: _inputDecoration(
+                                          hint: 'Ulangi password Anda',
+                                          icon: Icons.lock_clock_outlined,
+                                          suffix: IconButton(
+                                            icon: Icon(
+                                              _obscureConfirmPassword
+                                                  ? Icons.visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                              color: Colors.grey.shade500,
+                                              size: 20,
+                                            ),
+                                            onPressed: () => setState(
+                                                () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                          ),
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Konfirmasi password wajib diisi';
+                                          }
+                                          if (val != _passwordCtrl.text) {
+                                            return 'Konfirmasi password tidak cocok';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 28),
+
+                                      // Tombol Daftar
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 52,
+                                        child: ElevatedButton(
+                                          onPressed: _isLoading ? null : _register,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF1565C0),
+                                            foregroundColor: Colors.white,
+                                            elevation: 3,
+                                            shadowColor:
+                                                const Color(0xFF1565C0).withOpacity(0.3),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: _isLoading
+                                              ? const SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : const Text(
+                                                  'Daftar Sekarang',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Tombol Kembali ke Login
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Sudah punya akun? ',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => Navigator.pop(context),
+                                            child: const Text(
+                                              'Login di sini',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF1565C0),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  /// Membuat label teks petunjuk untuk masing-masing kolom input di formulir registrasi.
   Widget _buildInputLabel(String label) {
     return Text(
       label,
@@ -425,6 +482,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
+  /// Membuat konfigurasi gaya visual kolom input (InputDecoration) dengan warna, garis tepi, ikon, dan tombol opsi.
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,

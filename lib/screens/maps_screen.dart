@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 
+/// Widget Halaman Maps untuk menampilkan peta lokasi kantor, radius presensi,
+/// serta mendeteksi posisi pengguna saat ini secara real-time.
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
 
@@ -12,6 +14,7 @@ class MapsScreen extends StatefulWidget {
   State<MapsScreen> createState() => _MapsScreenState();
 }
 
+/// State untuk mengelola rendering peta interaktif dan perhitungan jarak pengguna ke kantor.
 class _MapsScreenState extends State<MapsScreen> {
   final MapController _mapController = MapController();
   Position? _userPosition;
@@ -50,12 +53,15 @@ class _MapsScreenState extends State<MapsScreen> {
     }
   }
 
+  /// Memulai proses memuat data peta dengan mendeteksi lokasi GPS pengguna saat ini.
   Future<void> _loadMap() async {
     setState(() => _isLoading = true);
     await _getUserLocation();
     setState(() => _isLoading = false);
   }
 
+  /// Mendeteksi posisi GPS (koordinat Latitude & Longitude) pengguna saat ini.
+  /// Memeriksa status izin lokasi dan menghitung jarak antara posisi pengguna dengan koordinat kantor.
   Future<void> _getUserLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -152,10 +158,12 @@ class _MapsScreenState extends State<MapsScreen> {
     }
   }
 
+  /// Memindahkan kamera peta ke titik koordinat lokasi kantor.
   void _goToOffice() {
     _mapController.move(_officeLocation, 17.0);
   }
 
+  /// Memindahkan kamera peta ke titik koordinat lokasi pengguna saat ini.
   void _goToUser() {
     if (_userPosition == null) return;
     _mapController.move(
@@ -164,6 +172,8 @@ class _MapsScreenState extends State<MapsScreen> {
     );
   }
 
+  /// Mengatur pembangunan UI layar peta interaktif, termasuk status info bar,
+  /// widget FlutterMap dengan layer petanya, dan tombol mengambang (FloatingActionButtons).
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -385,6 +395,7 @@ class _MapsScreenState extends State<MapsScreen> {
     );
   }
 
+  /// Membuat widget ubin (tile) informasi ringkas untuk koordinat kantor maupun jarak GPS.
   Widget _buildInfoTile({
     required IconData icon,
     required String label,
