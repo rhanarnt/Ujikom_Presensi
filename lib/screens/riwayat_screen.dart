@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../helpers/database_helper.dart';
 import '../models/presensi_model.dart';
 
+/// Widget Halaman Riwayat untuk menampilkan daftar riwayat presensi pengguna.
 class RiwayatScreen extends StatefulWidget {
   final int userId;
 
@@ -15,6 +16,7 @@ class RiwayatScreen extends StatefulWidget {
   State<RiwayatScreen> createState() => _RiwayatScreenState();
 }
 
+/// State untuk mengelola daftar data riwayat kehadiran yang dimuat dari database SQLite.
 class _RiwayatScreenState extends State<RiwayatScreen> {
   List<PresensiModel> _riwayat = [];
   bool _isLoading = true;
@@ -25,6 +27,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     _loadRiwayat();
   }
 
+  @override
+  void didUpdateWidget(covariant RiwayatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Memuat ulang riwayat jika ID User berubah dari inisialisasi awal (dari 0 ke ID asli)
+    if (oldWidget.userId != widget.userId) {
+      _loadRiwayat();
+    }
+  }
+
+  /// Memuat riwayat data presensi pengguna dari database SQLite.
   Future<void> _loadRiwayat() async {
     setState(() => _isLoading = true);
     try {
@@ -36,6 +48,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     }
   }
 
+  /// Menampilkan lembar detail presensi (bottom sheet) yang memuat foto masuk/keluar serta mini peta lokasi.
   void _showDetailDialog(PresensiModel p) {
     showModalBottomSheet(
       context: context,
@@ -204,6 +217,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat baris ubin detail data presensi (seperti tanggal atau waktu masuk).
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -244,6 +258,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat penanda (badge) status kehadiran (Tepat Waktu atau Terlambat) dengan warna yang sesuai.
   Widget _buildStatusBadge(String? status) {
     Color color;
     Color bgColor;
@@ -275,6 +290,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Mengatur pembangunan UI utama layar riwayat, menampilkan indikator loading, pesan kosong, atau daftar kartu riwayat.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -298,6 +314,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat header bagian atas riwayat yang menampilkan judul halaman dan total data presensi.
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -347,6 +364,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat kartu (card) daftar riwayat absen individu untuk satu tanggal tertentu.
   Widget _buildRiwayatCard(PresensiModel p) {
     return GestureDetector(
       onTap: () => _showDetailDialog(p),
@@ -456,6 +474,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat chip waktu mini yang menunjukkan jam masuk atau keluar dengan warna dan ikon.
   Widget _buildTimeChip({
     required IconData icon,
     required String label,
@@ -484,6 +503,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Membuat tampilan UI ketika belum ada data riwayat presensi yang terekam.
   Widget _buildEmpty() {
     return Center(
       child: Column(
@@ -513,6 +533,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
+  /// Mengurai nomor hari dari string tanggal berformat (dd-MM-yyyy).
   String _getDayNum(String tanggal) {
     try {
       final parts = tanggal.split('-');
@@ -522,6 +543,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     }
   }
 
+  /// Mengurai dan memformat nama bulan singkat (misal: Jan, Feb) dari string tanggal berformat (dd-MM-yyyy).
   String _getMonth(String tanggal) {
     try {
       final parts = tanggal.split('-');
@@ -532,6 +554,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     }
   }
 
+  /// Memformat string tanggal (dd-MM-yyyy) menjadi format lengkap lokalisasi Indonesia (Hari, Tanggal Bulan Tahun).
   String _formatTanggal(String tanggal) {
     try {
       final parts = tanggal.split('-');

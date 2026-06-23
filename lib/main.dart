@@ -7,15 +7,19 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/register_screen.dart';
 import 'utils/constants.dart';
 
+/// Fungsi utama (entry point) aplikasi.
+/// Melakukan inisialisasi binding Flutter, lokalisasi tanggal Indonesia,
+/// inisialisasi driver database SQLite (untuk platform desktop), dan menjalankan aplikasi.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize date formatting for id_ID (Indonesian)
+  // Menginisialisasi format tanggal dan waktu untuk locale id_ID (Bahasa Indonesia).
   await initializeDateFormatting('id_ID', null);
 
-  // Initialize FFI for Windows and Linux
+  // Menginisialisasi pustaka FFI SQLite jika aplikasi berjalan di platform Windows atau Linux (non-web).
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -24,6 +28,8 @@ void main() async {
   runApp(const GeoPresenceApp());
 }
 
+/// Widget utama kelas aplikasi yang mengatur konfigurasi tema, navigasi rute,
+/// dan tampilan awal dari GeoPresence.
 class GeoPresenceApp extends StatelessWidget {
   const GeoPresenceApp({super.key});
 
@@ -57,6 +63,7 @@ class GeoPresenceApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/register': (context) => const RegisterScreen(),
       },
     );
   }

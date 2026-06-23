@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,11 @@ import 'presensi_screen.dart';
 import 'riwayat_screen.dart';
 import 'profil_screen.dart';
 import 'maps_screen.dart';
+import 'data_siswa_screen.dart';
 
+/// Widget Halaman Dashboard utama aplikasi GeoPresence.
+/// Menampilkan ringkasan informasi kehadiran, jam dinamis, status presensi hari ini,
+/// statistik kehadiran pengguna, dan navigasi menu cepat.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -18,6 +23,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+/// State untuk mengelola data dan tampilan halaman Dashboard.
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   UserModel? _user;
@@ -31,10 +37,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Memuat data profil user, status presensi hari ini, statistik kehadiran,
+    // serta mengaktifkan timer jam dinamis saat halaman pertama kali dibuka.
     _loadData();
     _startClock();
   }
 
+  // Mengaktifkan timer periodik yang berjalan setiap 1 detik
+  // untuk menampilkan perubahan jam secara real-time di UI Dashboard.
   void _startClock() {
     _updateClock();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -42,6 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Memperbarui nilai jam dan tanggal saat ini dengan format lokal Indonesia.
   void _updateClock() {
     final now = DateTime.now();
     setState(() {
@@ -50,20 +61,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Mengambil sesi user dari SharedPreferences dan memuat data pendukung dari database SQLite.
+  // Termasuk profil pengguna, status kehadiran hari ini, dan ringkasan statistik.
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt(AppConstants.prefUserId);
+      
+      // Jika session user kosong (belum login), kembalikan ke halaman login
       if (userId == null) {
         Navigator.pushReplacementNamed(context, '/login');
         return;
       }
 
       final db = DatabaseHelper();
+      // Mengambil data user berdasarkan ID
       final user = await db.getUserById(userId);
+      
+      // Mengambil data absen user hari ini berdasarkan tanggal
       final tanggal = DateFormat('dd-MM-yyyy').format(DateTime.now());
       final presensi = await db.getPresensiHariIni(userId, tanggal);
+      
+      // Mengambil rangkuman statistik kehadiran user
       final statistik = await db.getStatistikPresensi(userId);
 
       if (mounted) {
@@ -79,6 +99,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Menangani proses keluar (logout) dari aplikasi.
+  // Meminta konfirmasi pengguna, lalu menghapus semua sesi SharedPreferences dan kembali ke login.
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -105,11 +127,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (confirm == true) {
       final prefs = await SharedPreferences.getInstance();
+      // Menghapus data sesi user secara permanen
       await prefs.clear();
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
     }
   }
 
+  @override
+  void dispose() {
+    // Membatalkan (cancel) timer jam agar tidak terjadi kebocoran memori saat widget dihancurkan.
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Membuat tampilan tab utama (Beranda) di Dashboard.
+  /// Berisi seluruh ringkasan informasi, status presensi, tombol aksi, statistik, dan menu cepat.
   Widget _buildHomeTab() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -152,6 +184,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat komponen kartu ucapan selamat dinamis (pagi/siang/sore/malam)
+  /// yang disesuaikan dengan waktu perangkat saat ini dan menampilkan nama pengguna.
   Widget _buildGreetingCard() {
     final jam = DateTime.now().hour;
     String greeting;
@@ -230,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             radius: 28,
             backgroundColor: Colors.white.withOpacity(0.2),
             backgroundImage: _user?.foto != null
-                ? NetworkImage(_user!.foto!)
+                ? FileImage(File(_user!.foto!))
                 : null,
             child: _user?.foto == null
                 ? Text(
@@ -248,6 +282,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat komponen kartu jam dinamis yang menampilkan waktu (HH:mm:ss)
+  /// dan tanggal hari ini secara real-time.
   Widget _buildClockCard() {
     return Container(
       width: double.infinity,
@@ -289,6 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat kartu status presensi hari ini untuk masuk, keluar, dan status terlambat/tepat waktu.
   Widget _buildPresensiStatusCard() {
     final hasMasuk = _presensiHariIni?.jamMasuk != null;
     final hasKeluar = _presensiHariIni?.jamKeluar != null;
@@ -378,6 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat item status individu (absen masuk/keluar/status) di dalam kartu status presensi.
   Widget _buildStatusItem({
     required String label,
     required String value,
@@ -416,6 +454,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat kelompok tombol aksi untuk melakukan presensi masuk dan presensi keluar.
   Widget _buildPresensiButtons() {
     final hasMasuk = _presensiHariIni?.jamMasuk != null;
     final hasKeluar = _presensiHariIni?.jamKeluar != null;
@@ -475,6 +514,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat tombol aksi presensi masuk atau keluar dengan dekorasi gradasi warna yang disesuaikan.
   Widget _buildActionButton({
     required String label,
     required IconData icon,
@@ -517,6 +557,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat komponen kartu yang menampilkan statistik kehadiran pengguna (total hadir, tepat waktu, terlambat).
   Widget _buildStatistikCard() {
     final total = _statistik['total_hadir'] ?? 0;
     final terlambat = _statistik['terlambat'] ?? 0;
@@ -579,6 +620,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat item statistik individu (angka dan label) dengan warna tertentu.
   Widget _buildStatItem(String label, String value, Color color, IconData icon) {
     return Expanded(
       child: Container(
@@ -612,6 +654,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat kelompok menu tindakan cepat (Siswa, Maps, Riwayat, Profil).
   Widget _buildQuickActions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,24 +671,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             _buildQuickAction(
-              icon: Icons.map_outlined,
-              label: 'Lihat Maps',
+              icon: Icons.people_outline,
+              label: 'Data Siswa',
               color: const Color(0xFF1565C0),
               onTap: () => setState(() => _selectedIndex = 1),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            _buildQuickAction(
+              icon: Icons.map_outlined,
+              label: 'Maps',
+              color: const Color(0xFFE65100),
+              onTap: () => setState(() => _selectedIndex = 2),
+            ),
+            const SizedBox(width: 8),
             _buildQuickAction(
               icon: Icons.history_rounded,
               label: 'Riwayat',
               color: const Color(0xFF00897B),
-              onTap: () => setState(() => _selectedIndex = 2),
+              onTap: () => setState(() => _selectedIndex = 3),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             _buildQuickAction(
               icon: Icons.person_outline,
               label: 'Profil',
               color: const Color(0xFF7B1FA2),
-              onTap: () => setState(() => _selectedIndex = 3),
+              onTap: () => setState(() => _selectedIndex = 4),
             ),
           ],
         ),
@@ -653,6 +703,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Membuat tombol tindakan cepat individu yang mengarahkan tab navigasi dashboard.
   Widget _buildQuickAction({
     required IconData icon,
     required String label,
@@ -688,16 +739,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _clockTimer?.cancel();
-    super.dispose();
-  }
 
+
+  /// Mengatur pembangunan UI utama layar Dashboard, termasuk Scaffold, AppBar, IndexedStack halaman,
+  /// dan BottomNavigationBar navigasi utama.
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeTab(),
+      const DataSiswaScreen(),
       const MapsScreen(),
       RiwayatScreen(userId: _user?.idUser ?? 0),
       ProfilScreen(
@@ -713,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_on, color: Colors.white, size: 20),
+            const Icon(Icons.school, color: Colors.white, size: 20),
             const SizedBox(width: 6),
             const Text(
               'GeoPresence',
@@ -757,6 +807,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF1565C0)),
               label: 'Dashboard',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF1565C0)),
+              label: 'Siswa',
             ),
             NavigationDestination(
               icon: Icon(Icons.map_outlined),

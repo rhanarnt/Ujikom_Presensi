@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/database_helper.dart';
 import '../utils/constants.dart';
 
+/// Widget Halaman Login aplikasi GeoPresence.
+/// Menyediakan antarmuka untuk masuk menggunakan email dan kata sandi (password).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -10,6 +12,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+/// State untuk mengelola input formulir login, proses autentikasi, dan animasi halaman login.
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
@@ -24,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    // Menginisialisasi AnimationController untuk transisi fade dan slide (geser) saat halaman login dimuat.
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -35,37 +39,46 @@ class _LoginScreenState extends State<LoginScreen>
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
+    _animController.forward(); // Memulai animasi
   }
 
   @override
   void dispose() {
+    // Membebaskan memori dengan menghancurkan animation controller dan text controllers.
     _animController.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
+  // Menangani proses otentikasi login pengguna.
+  // Memvalidasi kesesuaian input form, memanggil database helper untuk mengecek user,
+  // dan menyimpan sesi login ke SharedPreferences jika data valid.
   Future<void> _login() async {
+    // 1. Memeriksa validasi form (apakah email/password kosong atau format email salah)
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
       final db = DatabaseHelper();
+      // 2. Memanggil fungsi login dari DatabaseHelper untuk mencari kecocokan user di SQLite
       final user = await db.login(_emailCtrl.text.trim(), _passwordCtrl.text);
 
       if (!mounted) return;
 
       if (user != null) {
+        // 3. Menyimpan data sesi login pengguna secara persisten menggunakan SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(AppConstants.prefIsLogin, true);
         await prefs.setInt(AppConstants.prefUserId, user.idUser!);
         await prefs.setString(AppConstants.prefUserNama, user.nama);
 
         if (!mounted) return;
+        // 4. Mengarahkan pengguna masuk ke halaman Dashboard dan menghapus riwayat navigasi sebelumnya
         Navigator.pushReplacementNamed(context, '/dashboard');
       } else {
+        // Menampilkan error jika data user tidak ditemukan atau salah password
         _showError('Email atau password salah!');
       }
     } catch (e) {
@@ -75,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  /// Menampilkan pesan kesalahan (error) menggunakan SnackBar mengambang dengan latar belakang merah.
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -92,10 +106,9 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  /// Mengatur pembangunan elemen-elemen UI halaman login, termasuk logo, formulir input, dan tombol login.
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -106,219 +119,255 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: SizedBox(
-              height: size.height - MediaQuery.of(context).padding.top,
-              child: Column(
-                children: [
-                  // Header
-                  Expanded(
-                    flex: 2,
-                    child: FadeTransition(
-                      opacity: _fadeAnim,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.4),
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.location_on,
-                              size: 48,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'GeoPresence',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Presensi Berbasis Lokasi GPS',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-
-                  // Form Card
-                  Expanded(
-                    flex: 3,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Container(
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(36),
-                              topRight: Radius.circular(36),
-                            ),
-                          ),
-                          padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
-                          child: Form(
-                            key: _formKey,
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // Header
+                        FadeTransition(
+                          opacity: _fadeAnim,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 36),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                Container(
+                                  width: 90,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.4),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.school_outlined,
+                                    size: 48,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
                                 const Text(
-                                  'Masuk',
+                                  'GeoPresence',
                                   style: TextStyle(
-                                    fontSize: 28,
+                                    fontSize: 32,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1565C0),
+                                    color: Colors.white,
+                                    letterSpacing: 1.2,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Silahkan login untuk melanjutkan',
+                                  'Presensi Berbasis GPS & Face Selfie - Siswa SMK',
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-
-                                // Email Field
-                                _buildInputLabel('Email'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _emailCtrl,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: _inputDecoration(
-                                    hint: 'contoh@email.com',
-                                    icon: Icons.email_outlined,
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Email tidak boleh kosong';
-                                    }
-                                    if (!val.contains('@')) {
-                                      return 'Format email tidak valid';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-
-                                // Password Field
-                                _buildInputLabel('Password'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _passwordCtrl,
-                                  obscureText: _obscurePassword,
-                                  decoration: _inputDecoration(
-                                    hint: '••••••••',
-                                    icon: Icons.lock_outline,
-                                    suffix: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        color: Colors.grey.shade500,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => setState(
-                                          () => _obscurePassword = !_obscurePassword),
-                                    ),
-                                  ),
-                                  validator: (val) {
-                                    if (val == null || val.isEmpty) {
-                                      return 'Password tidak boleh kosong';
-                                    }
-                                    if (val.length < 6) {
-                                      return 'Password minimal 6 karakter';
-                                    }
-                                    return null;
-                                  },
-                                ),
-
-                                const SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    'Demo: admin@geopresence.com / admin123',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade500,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 32),
-
-                                // Login Button
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 54,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : _login,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1565C0),
-                                      foregroundColor: Colors.white,
-                                      elevation: 4,
-                                      shadowColor:
-                                          const Color(0xFF1565C0).withOpacity(0.4),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text(
-                                            'Masuk',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.8),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                      ),
+
+                        // Form Card
+                        Expanded(
+                          child: SlideTransition(
+                            position: _slideAnim,
+                            child: FadeTransition(
+                              opacity: _fadeAnim,
+                              child: Container(
+                                width: double.infinity,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(36),
+                                    topRight: Radius.circular(36),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Masuk',
+                                        style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF1565C0),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Silahkan login untuk melanjutkan',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 32),
+
+                                      // Email Field
+                                      _buildInputLabel('Email'),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        controller: _emailCtrl,
+                                        keyboardType: TextInputType.emailAddress,
+                                        decoration: _inputDecoration(
+                                          hint: 'contoh@email.com',
+                                          icon: Icons.email_outlined,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Email tidak boleh kosong';
+                                          }
+                                          if (!val.contains('@')) {
+                                            return 'Format email tidak valid';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 20),
+
+                                      // Password Field
+                                      _buildInputLabel('Password'),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        controller: _passwordCtrl,
+                                        obscureText: _obscurePassword,
+                                        decoration: _inputDecoration(
+                                          hint: '••••••••',
+                                          icon: Icons.lock_outline,
+                                          suffix: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                              color: Colors.grey.shade500,
+                                              size: 20,
+                                            ),
+                                            onPressed: () => setState(
+                                                () => _obscurePassword = !_obscurePassword),
+                                          ),
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Password tidak boleh kosong';
+                                          }
+                                          if (val.length < 6) {
+                                            return 'Password minimal 6 karakter';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          'Demo: roihan@smk.sch.id / admin123',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade500,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 32),
+
+                                      // Login Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 54,
+                                        child: ElevatedButton(
+                                          onPressed: _isLoading ? null : _login,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF1565C0),
+                                            foregroundColor: Colors.white,
+                                            elevation: 4,
+                                            shadowColor:
+                                                const Color(0xFF1565C0).withOpacity(0.4),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
+                                          ),
+                                          child: _isLoading
+                                              ? const SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.5,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : const Text(
+                                                  'Masuk',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 20),
+
+                                      // Pendaftaran Akun baru
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Belum memiliki akun? ',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => Navigator.pushNamed(context, '/register'),
+                                            child: const Text(
+                                              'Daftar di sini',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF1565C0),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  /// Membuat label teks untuk setiap kolom input formulir login.
   Widget _buildInputLabel(String label) {
     return Text(
       label,
@@ -330,6 +379,8 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  /// Membuat konfigurasi dekorasi kolom input (InputDecoration) dengan ikon, petunjuk teks,
+  /// warna latar belakang, dan garis tepi interaktif.
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,
